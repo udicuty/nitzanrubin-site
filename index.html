@@ -47,21 +47,12 @@
   .missing{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-family:var(--sans);font-size:12px;letter-spacing:.15em;color:var(--nav);padding:20px;line-height:2}
   .stage.err .missing{display:flex}
 
-  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-family:var(--sans);font-size:12px;letter-spacing:.2em;color:var(--nav)}
-  .controls button:hover{color:var(--hover)}
-  .count{font-variant-numeric:tabular-nums}
-  .info{display:none;text-align:center;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink);margin-top:12px}
-  .info.show{display:block}
-  .numbers{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 9px;margin-top:18px;font-family:var(--sans);font-size:11px;color:var(--nav)}
-  .numbers button{padding:2px}
-  .numbers button.on,.numbers button:hover{color:var(--hover)}
-  .dots{display:flex;flex-wrap:wrap;justify-content:center;gap:0 5px;margin-top:8px}
-  .dots button{width:8px;height:14px;font-size:16px;line-height:14px;color:#d0d0d0}
-  .dots button.on{color:var(--ink)}
-  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:24px}
-  .thumbs button{aspect-ratio:1;overflow:hidden;opacity:.45;transition:opacity .2s;background:#f3f3f3}
-  .thumbs button.on,.thumbs button:hover{opacity:1}
-  .thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+  /* Simple controls, as on the live site: centered "prev / next" below the photo, × at top right back to the grid */
+  .controls{text-align:center;margin-top:20px;font-family:var(--sans);font-size:12px;letter-spacing:.2em;color:var(--nav);user-select:none}
+  .controls button{color:#000}
+  .controls button:hover{color:var(--nav)}
+  .close{position:absolute;top:0;right:0;z-index:3;font-size:22px;line-height:1;padding:4px 8px;color:var(--ink)}
+  .close:hover{color:#000}
 
   /* ---------- Grid (category landing) ----------
      Full-width page (55px side padding), every thumb 350px tall at its natural aspect ratio, 18px gaps, wrapping left to right in
@@ -75,8 +66,6 @@
   body.view-grid main{max-width:none;padding:0 55px 30px}
   body.view-grid .grid{display:flex}
   body.view-grid .gallery{display:none}
-  .gridlink{font-family:var(--sans);font-size:12px;letter-spacing:.2em;color:var(--nav);text-align:center;margin-top:16px}
-  .gridlink a:hover{color:var(--hover)}
   @media (max-width:800px){
     body.view-grid main{padding:0 20px 20px}
     .grid a{width:100%!important;height:auto}
@@ -107,7 +96,6 @@
     nav.main .top{line-height:34px}
     .sub{position:static;transform:none;opacity:1;visibility:visible;padding:0 0 8px;min-width:0}
     .stage{height:60vh}
-    .numbers,.dots{display:none}
   }
 </style>
 </head>
@@ -138,17 +126,9 @@
       <div class="missing">Photo not found.<br>Run the download script in this folder once to fetch your photos.</div>
       <button class="hit l" aria-label="Previous image"></button>
       <button class="hit r" aria-label="Next image"></button>
+      <a class="close" href="#" id="toGrid" aria-label="Back to grid">&times;</a>
     </div>
-    <div class="controls">
-      <button id="infoBtn">info</button>
-      <span class="count" id="count"></span>
-      <span><button id="prev">prev</button> / <button id="next">next</button></span>
-    </div>
-    <div class="info" id="info"></div>
-    <div class="numbers" id="numbers"></div>
-    <div class="dots" id="dots"></div>
-    <div class="thumbs" id="thumbs"></div>
-    <div class="gridlink"><a href="#" id="toGrid">back to grid</a></div>
+    <div class="controls"><button id="prev">prev</button> / <button id="next">next</button></div>
   </section>
 
   <section class="about">
@@ -182,14 +162,12 @@ const GALLERIES = {"restaurants":{"t":"RESTAURANTS","f":["01-gg_web_11.jpg","02-
 const DEFAULT = "restaurants";
 
 const $ = id => document.getElementById(id);
-const stage = $("stage"), slide = $("slide"), count = $("count"), info = $("info");
+const stage = $("stage"), slide = $("slide");
 const grid = $("grid");
-const numbers = $("numbers"), dots = $("dots"), thumbs = $("thumbs");
 const nav = document.querySelector("nav.main"), tog = document.querySelector(".menu-toggle");
 let slug = DEFAULT, files = [], i = 0;
 
 const full  = f => "images/" + slug + "/" + f;
-const small = f => "thumbs/" + slug + "/" + f;
 const clean = f => f.replace(/^\d+-/, "").replace(/\.jpe?g$/i, "");
 
 function buildGallery(s){
@@ -206,16 +184,6 @@ function buildGallery(s){
   });
   $("toGrid").href = "#" + s;
   document.title = GALLERIES[s].t + " — Nitzan Rubin I Photographer";
-  numbers.innerHTML = dots.innerHTML = thumbs.innerHTML = "";
-  files.forEach((f, n) => {
-    const b = document.createElement("button"); b.textContent = n + 1; b.onclick = () => show(n); numbers.appendChild(b);
-    const d = document.createElement("button"); d.textContent = "·"; d.setAttribute("aria-label", "Image " + (n + 1)); d.onclick = () => show(n); dots.appendChild(d);
-    const t = document.createElement("button"); t.setAttribute("aria-label", "Image " + (n + 1));
-    t.onclick = () => { show(n); window.scrollTo({top:0, behavior:"smooth"}); };
-    const im = document.createElement("img"); im.loading = "lazy"; im.alt = ""; im.src = small(f);
-    im.onerror = () => { im.remove(); };
-    t.appendChild(im); thumbs.appendChild(t);
-  });
 }
 
 // Justified rows: pack thumbs at 350px tall until the next one won't fit,
@@ -245,9 +213,6 @@ function show(n){
   slide.onerror = () => stage.classList.add("err");
   slide.src = full(f);
   slide.alt = clean(f);
-  count.textContent = (i + 1) + " / " + files.length;
-  info.textContent = clean(f);
-  [numbers, dots, thumbs].forEach(g => [...g.children].forEach((c, k) => c.classList.toggle("on", k === i)));
   if (files.length > 1) new Image().src = full(files[(i + 1) % files.length]);
   const want = "#" + slug + "/" + (i + 1);
   if (!document.body.classList.contains("view-grid") && location.hash !== want) { try { history.replaceState(null, "", want); } catch (e) {} }
@@ -272,7 +237,6 @@ const prev = () => show(i - 1), next = () => show(i + 1);
 $("prev").onclick = prev; $("next").onclick = next;
 document.querySelector(".hit.l").onclick = prev;
 document.querySelector(".hit.r").onclick = next;
-$("infoBtn").onclick = () => info.classList.toggle("show");
 document.addEventListener("keydown", e => {
   if (document.body.classList.contains("view-about") || document.body.classList.contains("view-grid")) return;
   if (e.key === "Escape") { location.hash = slug; return; }
